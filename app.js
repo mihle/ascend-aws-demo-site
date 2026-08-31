@@ -1,15 +1,12 @@
-const token = document.querySelector('meta[name="ascend-site-name"]')?.content ?? "";
-const siteName = token === "__SITE_NAME__" ? "Ascend AWS Demo Site" : token;
+const token = document.querySelector('meta[name="customer-company-name"]')?.content ?? "";
+const companyName = token === "__COMPANY_NAME__" ? "Aster & Co." : token;
+const companyInitial = companyName.trim().charAt(0).toUpperCase() || "A";
 
-document.querySelectorAll("[data-site-name]").forEach((element) => {
-  element.textContent = siteName;
+document.querySelectorAll("[data-company-name]").forEach((element) => {
+  element.textContent = companyName;
 });
-document.title = `${siteName} · Governed by Ascend`;
+document.querySelectorAll("[data-company-initial]").forEach((element) => {
+  element.textContent = companyInitial;
+});
 
-const clock = document.querySelector("#clock");
-const updateClock = () => {
-  if (!clock) return;
-  clock.textContent = `${new Date().toISOString().slice(11, 19)} UTC`;
-};
-updateClock();
-setInterval(updateClock, 1000);
+document.title = `${companyName} · Ideas with momentum`;
