@@ -2,6 +2,8 @@
 
 > A colorful, immutable web fixture for proving governed AWS software installation through Ascend.
 
+[**Open the live demo →**](https://mihle.github.io/ascend-aws-demo-site/)
+
 ![Static HTML](https://img.shields.io/badge/site-static_HTML-26d9c7?style=for-the-badge)
 ![Container](https://img.shields.io/badge/container-BusyBox-7c5cff?style=for-the-badge)
 ![Fixture TTL](https://img.shields.io/badge/fixture_TTL-24h-f59e0b?style=for-the-badge)
