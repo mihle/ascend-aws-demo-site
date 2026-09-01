@@ -20,6 +20,7 @@ the source revision, running service, public response, and database round trip.
 - Backward-compatible `SITE_NAME` support for the existing Ascend action
 - Immutable revision proof in page metadata and `X-Ascend-Application-Revision`
 - `/healthz` backed by a real idempotent PostgreSQL write/read probe
+- Optional `APPLICATION_DATA_PATH` write/read proof for the mounted demo data filesystem
 - No credentials, analytics, CI secrets, package manager, or external assets
 
 ## Run it
@@ -29,8 +30,10 @@ docker build -t ascend-aws-demo-site .
 docker run --rm -p 8080:80 \
   -e COMPANY_NAME="Meridian & Co." \
   -e APPLICATION_REVISION="$(git rev-parse HEAD)" \
+  -e APPLICATION_DATA_PATH=/var/lib/ascend-demo-data \
   -e DATABASE_CONFIG_FILE=/run/secrets/database.json \
   -v "$PWD/database.local.json:/run/secrets/database.json:ro" \
+  -v "$PWD/.local-data:/var/lib/ascend-demo-data" \
   ascend-aws-demo-site
 ```
 

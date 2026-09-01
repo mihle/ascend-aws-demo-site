@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
+const { randomUUID } = require("node:crypto");
 const { Pool } = require("pg");
 
 const STATIC_FILES = new Map([
@@ -78,6 +79,45 @@ function createDatabaseProbe(config) {
   };
 }
 
+function createDataProbe(dataPath) {
+  if (dataPath == null || String(dataPath).trim() === "") return null;
+  const configuredPath = requireText(dataPath, "APPLICATION_DATA_PATH");
+  if (!path.isAbsolute(configuredPath)) {
+    throw new Error("APPLICATION_DATA_PATH must be absolute");
+  }
+  const directory = path.resolve(configuredPath);
+  if (directory === path.parse(directory).root) {
+    throw new Error("APPLICATION_DATA_PATH must not be a filesystem root");
+  }
+
+  return {
+    async probe({ companyName, revision }) {
+      await fs.promises.mkdir(directory, { recursive: true });
+      const marker = {
+        marker: "application-data-round-trip",
+        company: companyName,
+        applicationRevision: revision,
+      };
+      const markerPath = path.join(directory, "application-health.json");
+      const temporaryPath = `${markerPath}.${process.pid}.${randomUUID()}.tmp`;
+      await fs.promises.writeFile(temporaryPath, `${JSON.stringify(marker)}\n`, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      await fs.promises.rename(temporaryPath, markerPath);
+      const observed = JSON.parse(await fs.promises.readFile(markerPath, "utf8"));
+      if (
+        observed.marker !== marker.marker ||
+        observed.company !== companyName ||
+        observed.applicationRevision !== revision
+      ) {
+        throw new Error("application data marker was not read back");
+      }
+      return observed;
+    },
+  };
+}
+
 function json(res, statusCode, body, revision, headOnly = false) {
   const payload = Buffer.from(JSON.stringify(body));
   res.writeHead(statusCode, {
@@ -89,7 +129,7 @@ function json(res, statusCode, body, revision, headOnly = false) {
   res.end(headOnly ? undefined : payload);
 }
 
-function createRequestHandler({ companyName, revision, webRoot, databaseProbe }) {
+function createRequestHandler({ companyName, revision, webRoot, databaseProbe, dataProbe = null }) {
   return async (req, res) => {
     const headOnly = req.method === "HEAD";
     if (req.method !== "GET" && !headOnly) {
@@ -100,24 +140,14 @@ function createRequestHandler({ companyName, revision, webRoot, databaseProbe })
 
     const url = new URL(req.url, "http://localhost");
     if (url.pathname === "/healthz") {
+      let database;
       try {
         const row = await databaseProbe.probe({ revision });
-        json(
-          res,
-          200,
-          {
-            status: "ok",
-            company: companyName,
-            revision,
-            database: {
-              status: "ok",
-              marker: row.marker,
-              applicationRevision: row.application_revision,
-            },
-          },
-          revision,
-          headOnly,
-        );
+        database = {
+          status: "ok",
+          marker: row.marker,
+          applicationRevision: row.application_revision,
+        };
       } catch {
         json(
           res,
@@ -126,7 +156,49 @@ function createRequestHandler({ companyName, revision, webRoot, databaseProbe })
           revision,
           headOnly,
         );
+        return;
       }
+
+      let storage;
+      if (dataProbe) {
+        try {
+          const row = await dataProbe.probe({ companyName, revision });
+          storage = {
+            status: "ok",
+            marker: row.marker,
+            applicationRevision: row.applicationRevision,
+          };
+        } catch {
+          json(
+            res,
+            503,
+            {
+              status: "unavailable",
+              company: companyName,
+              revision,
+              database,
+              storage: { status: "error" },
+            },
+            revision,
+            headOnly,
+          );
+          return;
+        }
+      }
+
+      json(
+        res,
+        200,
+        {
+          status: "ok",
+          company: companyName,
+          revision,
+          database,
+          ...(storage ? { storage } : {}),
+        },
+        revision,
+        headOnly,
+      );
       return;
     }
 
@@ -155,7 +227,8 @@ function start() {
   const webRoot = process.env.WEB_ROOT ?? "/www";
   const port = Number(process.env.PORT ?? 80);
   const databaseProbe = createDatabaseProbe(loadDatabaseConfig(process.env.DATABASE_CONFIG_FILE));
-  const server = http.createServer(createRequestHandler({ companyName, revision, webRoot, databaseProbe }));
+  const dataProbe = createDataProbe(process.env.APPLICATION_DATA_PATH);
+  const server = http.createServer(createRequestHandler({ companyName, revision, webRoot, databaseProbe, dataProbe }));
 
   const shutdown = () => {
     server.close(() => {
@@ -172,4 +245,4 @@ if (require.main === module) {
   start();
 }
 
-module.exports = { createDatabaseProbe, createRequestHandler, loadDatabaseConfig, requireText };
+module.exports = { createDataProbe, createDatabaseProbe, createRequestHandler, loadDatabaseConfig, requireText };
