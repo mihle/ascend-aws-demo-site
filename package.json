@@ -1,0 +1,13 @@
+{
+  "name": "ascend-aws-demo-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Customer-branded AWS demo site with database-backed health",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test server.test.js"
+  },
+  "dependencies": {
+    "pg": "8.13.3"
+  }
+}
