@@ -1,0 +1,27 @@
+{
+  "contract_version": "ascend-deployment/v1",
+  "runtime": {
+    "kind": "compose",
+    "source": "compose.yaml"
+  },
+  "required_configuration": [
+    {
+      "name": "COMPANY_NAME",
+      "kind": "variable",
+      "required": false
+    }
+  ],
+  "ports": [
+    {
+      "name": "http",
+      "port": 80
+    }
+  ],
+  "health_checks": [
+    {
+      "name": "readiness",
+      "port": 80,
+      "path": "/healthz"
+    }
+  ]
+}
