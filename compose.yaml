@@ -1,0 +1,8 @@
+services:
+  site:
+    build:
+      context: .
+    environment:
+      COMPANY_NAME: ${COMPANY_NAME:-Customer Operations}
+    ports:
+      - "8080:80"

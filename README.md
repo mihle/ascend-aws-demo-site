@@ -21,6 +21,7 @@ the source revision, running service, public response, and database round trip.
 - Immutable revision proof in page metadata and `X-Ascend-Application-Revision`
 - `/healthz` backed by a real idempotent PostgreSQL write/read probe
 - Optional `APPLICATION_DATA_PATH` write/read proof for the mounted demo data filesystem
+- A bounded `.ascend/deployment.json` manifest and Compose definition for repository inspection
 - No credentials, analytics, CI secrets, package manager, or external assets
 
 ## Run it
