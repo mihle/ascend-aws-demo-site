@@ -72,6 +72,24 @@ test("healthz returns database read-back proof", async () => {
   });
 });
 
+test("healthz remains ready when the optional database integration is not configured", async () => {
+  const handler = createRequestHandler({
+    companyName: "Altivo Logistics",
+    revision: REVISION,
+    webRoot: "/unused",
+    databaseProbe: null,
+  });
+
+  const response = await request(handler, "/healthz");
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(JSON.parse(response.body), {
+    status: "ok",
+    company: "Altivo Logistics",
+    revision: REVISION,
+    database: { status: "not_configured" },
+  });
+});
+
 test("healthz returns application data read-back proof when configured", async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "ascend-demo-data-"));
   const handler = createRequestHandler({

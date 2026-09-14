@@ -140,23 +140,25 @@ function createRequestHandler({ companyName, revision, webRoot, databaseProbe, d
 
     const url = new URL(req.url, "http://localhost");
     if (url.pathname === "/healthz") {
-      let database;
-      try {
-        const row = await databaseProbe.probe({ revision });
-        database = {
-          status: "ok",
-          marker: row.marker,
-          applicationRevision: row.application_revision,
-        };
-      } catch {
-        json(
-          res,
-          503,
-          { status: "unavailable", company: companyName, revision, database: { status: "error" } },
-          revision,
-          headOnly,
-        );
-        return;
+      let database = { status: "not_configured" };
+      if (databaseProbe) {
+        try {
+          const row = await databaseProbe.probe({ revision });
+          database = {
+            status: "ok",
+            marker: row.marker,
+            applicationRevision: row.application_revision,
+          };
+        } catch {
+          json(
+            res,
+            503,
+            { status: "unavailable", company: companyName, revision, database: { status: "error" } },
+            revision,
+            headOnly,
+          );
+          return;
+        }
       }
 
       let storage;
@@ -226,12 +228,18 @@ function start() {
   const revision = requireText(process.env.APPLICATION_REVISION, "APPLICATION_REVISION");
   const webRoot = process.env.WEB_ROOT ?? "/www";
   const port = Number(process.env.PORT ?? 80);
-  const databaseProbe = createDatabaseProbe(loadDatabaseConfig(process.env.DATABASE_CONFIG_FILE));
+  const databaseProbe = process.env.DATABASE_CONFIG_FILE
+    ? createDatabaseProbe(loadDatabaseConfig(process.env.DATABASE_CONFIG_FILE))
+    : null;
   const dataProbe = createDataProbe(process.env.APPLICATION_DATA_PATH);
   const server = http.createServer(createRequestHandler({ companyName, revision, webRoot, databaseProbe, dataProbe }));
 
   const shutdown = () => {
     server.close(() => {
+      if (!databaseProbe) {
+        process.exit(0);
+        return;
+      }
       databaseProbe.close().finally(() => process.exit(0));
     });
   };

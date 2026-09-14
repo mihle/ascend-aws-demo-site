@@ -19,7 +19,7 @@ the source revision, running service, public response, and database round trip.
 - Runtime `COMPANY_NAME` injection without rebuilding the image
 - Backward-compatible `SITE_NAME` support for the existing Ascend action
 - Immutable revision proof in page metadata and `X-Ascend-Application-Revision`
-- `/healthz` backed by a real idempotent PostgreSQL write/read probe
+- `/healthz` with immutable-revision proof and an optional real PostgreSQL write/read probe
 - Optional `APPLICATION_DATA_PATH` write/read proof for the mounted demo data filesystem
 - A bounded `.ascend/deployment.json` manifest and Compose definition for repository inspection
 - No credentials, analytics, CI secrets, package manager, or external assets
@@ -39,7 +39,9 @@ docker run --rm -p 8080:80 \
 ```
 
 Open `http://localhost:8080`. If `COMPANY_NAME` is absent, the container accepts
-`SITE_NAME` as a compatibility fallback. The database file is a JSON object with
+`SITE_NAME` as a compatibility fallback. When `DATABASE_CONFIG_FILE` is absent,
+the health response reports the database integration as `not_configured` and
+still verifies the running application revision. When supplied, the database file is a JSON object with
 `host`, `port`, `database`, `username`, and `password`; keep it owner-only and do
 not commit it.
 
